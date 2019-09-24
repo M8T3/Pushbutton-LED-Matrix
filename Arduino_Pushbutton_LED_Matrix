@@ -1,0 +1,166 @@
+int matLEDs[8][8] = {{1, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0},  //matrix to keep track of which LEDs should be on
+  {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}
+};
+int slctd_row = 0;
+int slctd_col = 0;
+
+const int latchPinRows = 8; //Latch Pin (RCLK - Storage register Clock) for shift register controlling cathode rows
+const int clockPinRows = 7; //Clock Pin (SRCLK - Shift Register Clock) for shift register controlling cathode rows
+const int dataPinRows = 9; //Data Pin (SER - Serial Input) for shift register controlling cathode rows
+
+const int latchPinCols = 12; //Latch Pin (RCLK - Storage register Clock) for shift register controlling anode columns
+const int clockPinCols = 11; //Clock Pin (SRCLK - Shift Register Clock) for shift register controlling anode columns
+const int dataPinCols = 13; //Data Pin (SER - Serial Input) for shift register controlling anode columns
+
+const int BUTTON_UP = 5; // input pin where pushbutton to move current LED selected up is connected
+const int BUTTON_DOWN = 3; // input pin where pushbutton to move current LED selected down is connected
+const int BUTTON_CNTR = 4; // input pin where pushbutton to select current LED to be on or off is connected
+const int BUTTON_LEFT = A5; // input pin where pushbutton to move current LED selected left is connected
+const int BUTTON_RITE = 2; // input pin where pushbutton to move current LED selected right is connected
+
+int val_left = 0;                        // val will be used to store the state of the input pin
+int old_val_left = 0;                    // old_val stores the previous value of "val"
+int val_ctr = 0;                         // val will be used to store the state of the input pin
+int old_val_ctr = 0;                     // old_val stores the previous value of "val"
+int val_rite = 0;                        // val will be used to store the state of the input pin
+int old_val_rite = 0;                    // old_val stores the previous value of "val"
+int val_up = 0;                          // val will be used to store the state of the input pin
+int old_val_up = 0;                      // old_val stores the previous value of "val"
+int val_down = 0;                        // val will be used to store the state of the input pin
+int old_val_down = 0;                    // old_val stores the previous value of "val"
+
+byte anodeCols = 0b00000000;             //byte (8 bits) that sets each of the anode columns LOW (0b indicates that this is a binary number)
+byte cathRows = 0b11111111;              //byte (8 bits) that sets each of the cathode rows HIGH 
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(BUTTON_LEFT, INPUT); // left pushbutton is an input
+  pinMode(BUTTON_CNTR, INPUT); // center pushbutton is an input
+  pinMode(BUTTON_RITE, INPUT); // right pushbutton is an input
+  pinMode(BUTTON_UP, INPUT);   // up pushbutton is an input
+  pinMode(BUTTON_DOWN, INPUT); // down pushbutton is an input
+
+  pinMode(latchPinRows, OUTPUT);
+  pinMode(dataPinRows, OUTPUT);
+  pinMode(clockPinRows, OUTPUT);
+  pinMode(latchPinCols, OUTPUT);
+  pinMode(dataPinCols, OUTPUT);
+  pinMode(clockPinCols, OUTPUT);
+  Serial.begin(9600);            //initialize serial monitor
+}
+
+void updateShiftRegisters()       //function that updates the shift registers (which control which LEDs are lit up)
+{
+  digitalWrite(latchPinRows, LOW);  //turns off latch pin or storage register so no new bytes of data are pushed to the register outputs
+  digitalWrite(latchPinCols, LOW);
+  shiftOut(dataPinRows, clockPinRows, MSBFIRST, cathRows); //Arduino built-in function which handles sending data to shift registers
+  shiftOut(dataPinCols, clockPinCols, MSBFIRST, anodeCols);
+  digitalWrite(latchPinRows, HIGH);  //turns on latch pin so new bytes of data are pushed to the register outputs
+  digitalWrite(latchPinCols, HIGH);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  val_up = digitalRead(BUTTON_UP);     // read input value from up button
+  val_ctr = digitalRead(BUTTON_CNTR);  // read input value from center button
+  val_down = digitalRead(BUTTON_DOWN); // read input value from down button
+  val_left = digitalRead(BUTTON_LEFT); // read input value from left button
+  val_rite = digitalRead(BUTTON_RITE); // read input value from right button
+
+  if ((val_up == HIGH) && (old_val_up == LOW)) { //used to detect if a button is pressed
+    if (slctd_row != 0) {
+      Serial.println("up bttn prssd");
+      Serial.print("Prev. row: ");
+      Serial.println(slctd_row);
+      slctd_row = slctd_row - 1;
+      Serial.print("Curr. row: ");
+      Serial.println(slctd_row);
+      delay(10);
+      old_val_up = val_up;   //used to deal with button bouncing as it 
+                             //prevents a transition from occuring right after the button is pressed
+    }
+  }
+
+  if ((val_down == HIGH) && (old_val_down == LOW)) { //used to detect if a button is pressed
+    if (slctd_row != 7) {
+      Serial.println("down button prssd");
+      Serial.print("Prev. row: ");
+      Serial.println(slctd_row);
+      slctd_row = slctd_row + 1;
+      Serial.print("Curr. row: ");
+      Serial.println(slctd_row);
+      delay(10);
+      old_val_down = val_down; //used to deal with button bouncing as it
+                               //prevents a transition from occuring right after the button is pressed 
+    }
+  }
+
+  if ((val_left == HIGH) && (old_val_left == LOW)) { //used to detect if a button is pressed
+    if (slctd_col != 0) {
+      Serial.println("left bttn prssd");
+      Serial.print("Prev col: ");
+      Serial.println(slctd_col);
+      slctd_col = slctd_col - 1;
+      Serial.print("Curr. col: ");
+      Serial.println(slctd_col);
+      delay(10);
+      old_val_left = val_left; //used to deal with button bouncing as it
+                               //prevents a transition from occuring right after the button is pressed 
+    }
+  }
+
+  if ((val_rite == HIGH) && (old_val_rite == LOW)) { //used to detect if a button is pressed
+    if (slctd_col != 7) {
+      Serial.println("right bttn prssd");
+      Serial.print("Prev. col: ");
+      Serial.println(slctd_col);
+      slctd_col = slctd_col + 1;
+      Serial.print("Curr. col: ");
+      Serial.println(slctd_col);
+      delay(10);
+      old_val_rite = val_rite; //used to deal with button bouncing as it
+                              //prevents a transition from occuring right after the button is pressed
+    }
+  }
+
+  if ((val_ctr == HIGH) && (old_val_ctr == LOW)) { //used to detect if a button is pressed
+    Serial.print("LED pstn slctd (row)(col): ");
+    Serial.print(slctd_row);
+    Serial.println(slctd_col);
+    Serial.print("Prev. Slctd LED stat. (1:ON, 0:OFF): ");
+    Serial.println(matLEDs[slctd_row][slctd_col]);
+    matLEDs[slctd_row][slctd_col] = 1 - matLEDs[slctd_row][slctd_col];
+    Serial.print("Curr. Slctd LED stat. (1:ON, 0:OFF): ");
+    Serial.println(matLEDs[slctd_row][slctd_col]);
+    delay(10);
+    old_val_ctr = val_ctr; //used to deal with button bouncing as it
+                           //prevents a transition from occuring right after the button is pressed
+  }
+
+  old_val_left = val_left;      //updating the previous value for the left button with the current left button value
+  old_val_ctr = val_ctr;        //updating the previous value for the center button with the current center button value
+  old_val_rite = val_rite;      //updating the previous value for the right button with the current right button value
+  old_val_up = val_up;          //updating the previous value for the up button with the current up button value
+  old_val_down = val_down;      //updating the previous value for the down button with the current down button value
+
+  for (int i = 0; i < 8; i++) {
+    anodeCols = 0b00000000;  //resets all the anode columns low (no voltage)
+    cathRows = 0b11111111;   //resets all the cathode rows high (high voltage)
+                             //the two lines above ensure no LEDs are turned on between lighting LEDs in a particular row
+
+    bitWrite(cathRows, i, 0); //sets whichever cathode row to low so current can flow for the LEDs if the anode for that column is high
+                              //i.e. if turning on the second row (or row 1 since rows are numbered 0-7),
+                              //cathRows would equal 0b11111101 
+
+    for (int j = 0; j < 8; j++) {
+      if (matLEDs[i][j] == 1) { //checks to see if a particular LED in that row and col needs to be turned on or off
+        bitWrite(anodeCols, j, 1);
+      } else {
+        bitWrite(anodeCols, j, 0);
+      }
+
+      updateShiftRegisters();
+    }
+
+  }
+}
